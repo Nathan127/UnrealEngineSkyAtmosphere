@@ -854,8 +854,8 @@ void Game::render()
 		ImGui::Begin("Render method/Tech");
 
 		uiRenderingMethodPrev = uiRenderingMethod;
-		const char* listbox_renderingMethods[] = { "Bruneton 2017", "Path Tracing", "NEW Ray Marching"};
-		ImGui::Combo("Render method", &uiRenderingMethod, listbox_renderingMethods, MethodCount, 3);
+		const char* listbox_renderingMethods[] = { "Bruneton 2017", "Path Tracing", "NEW Ray Marching", "Sky Model 2021"};
+		ImGui::Combo("Render method", &uiRenderingMethod, listbox_renderingMethods, MethodCount, 4);
 
 		transPermutationPrev = currentTransPermutation;
 		shadowPermutationPrev = currentShadowPermutation;

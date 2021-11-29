@@ -330,6 +330,7 @@ private:
 		MethodBruneton2017 = 0,
 		MethodPathTracing,
 		MethodRaymarching,
+		MethodSkyModel,
 		MethodCount
 	};
 	int  uiRenderingMethod = MethodRaymarching;
