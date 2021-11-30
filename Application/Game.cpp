@@ -882,6 +882,12 @@ void Game::render()
 				ImGui::Checkbox("RGB Transmittance",  &currentColoredTransmittance);
 		}
 
+		// Nathan
+		if (uiRenderingMethod == MethodSkyModel)
+		{
+			// Atmosphere Specific GUI options
+		}
+
 		multipleScatteringFactorPrev = currentMultipleScatteringFactor;
 		if (uiRenderingMethod != MethodBruneton2017)
 		{
@@ -1016,6 +1022,15 @@ void Game::render()
 				renderSkyViewLut();
 			generateSkyAtmosphereCameraVolumeWithRayMarch();
 			renderRayMarching();
+		}
+		//Nathan
+		else if (uiRenderingMethod == MethodSkyModel)
+		{
+			//OutputDebugStringA("Test String");	// Test output debug string, called every frame.
+			/*if (currentFastSky)
+				renderSkyViewLut();
+			generateSkyAtmosphereCameraVolumeWithRayMarch();
+			renderRayMarching();*/
 		}
 		else
 		{
