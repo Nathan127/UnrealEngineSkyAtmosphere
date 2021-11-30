@@ -352,6 +352,7 @@ private:
 	void renderPathTracing();
 	void RenderSkyAtmosphereOverOpaque();
 	void renderRayMarching();
+	void renderSkyModel();
 	void generateSkyAtmosphereCameraVolumeWithRayMarch();
 	void renderTerrain();
 	void renderShadowmap();

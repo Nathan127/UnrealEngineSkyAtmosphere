@@ -1001,14 +1001,16 @@ void Game::render()
 
 	{
 		GPU_SCOPED_TIMEREVENT(SkyRender, 255, 255, 255);
-		if (uiRenderingMethod != MethodBruneton2017)
+		if (uiRenderingMethod != MethodBruneton2017 && uiRenderingMethod != MethodSkyModel)	// I don't think I'll use these LUTs for sky model
 		{
 			renderTransmittanceLutPS();
+			OutputDebugStringA("TransmittancelutPS");
 		}
 
 		if(uiRenderingMethod == MethodRaymarching || (uiRenderingMethod == MethodPathTracing && currentMultipleScatteringFactor > 0.0f))
 		{
 			renderNewMultiScattTexPS();
+			OutputDebugStringA("new Multi Scatt Tex PS");
 		}
 
 		if (uiRenderingMethod == MethodPathTracing)
@@ -1031,6 +1033,7 @@ void Game::render()
 				renderSkyViewLut();
 			generateSkyAtmosphereCameraVolumeWithRayMarch();
 			renderRayMarching();*/
+			renderSkyModel();
 		}
 		else
 		{
