@@ -12,8 +12,10 @@
 #include <functional>
 
 // Nathan
-// Array Allocation helper function used by various sky model functions
-#define ALLOC_ARRAY(_struct,_number) \ ((_struct *) malloc(sizeof(_struct) * (_number)))
+// MACROS used by various sky model functions
+#define ALLOC_ARRAY(_struct,_number) \
+            ((_struct *) malloc(sizeof(_struct) * (_number)))
+#define M_MAX(_a,_b)            ((_a) > (_b) ? (_a) : (_b)) // This one may cause issues later on. This macro exists twice in ART.
 
 struct CaptureEvent
 {
@@ -46,6 +48,70 @@ public:
 	void render();
 
 private:
+	//Nathan: SkyModelState struct
+	typedef struct SkyModelState
+	{
+		// Radiance metadata
+		int turbidities;
+		double* turbidity_vals;
+		int albedos;
+		double* albedo_vals;
+		int altitudes;
+		double* altitude_vals;
+		int elevations;
+		double* elevation_vals;
+		int channels;
+		double channel_start;
+		double channel_width;
+		int tensor_components;
+		int sun_nbreaks;
+		int sun_offset;
+		int sun_stride;
+		double* sun_breaks;
+		int zenith_nbreaks;
+		int zenith_offset;
+		int zenith_stride;
+		double* zenith_breaks;
+		int emph_nbreaks;
+		int emph_offset;
+		double* emph_breaks;
+		int total_coefs_single_config; // May not be used
+		int total_coefs_all_configs;
+		int total_configs;
+
+		// Radiance data
+		double* radiance_dataset;
+
+		// Tranmittance metadata
+		int     trans_n_a;
+		int     trans_n_d;
+		int     trans_turbidities;
+		int     trans_altitudes;
+		int     trans_rank;
+		float* transmission_altitudes;
+		float* transmission_turbities;
+
+		// Tranmittance data
+		float* transmission_dataset_U;
+		float* transmission_dataset_V;
+
+		// Polarisation metadata
+		int tensor_components_pol;
+		int sun_nbreaks_pol;
+		int sun_offset_pol;
+		int sun_stride_pol;
+		double* sun_breaks_pol;
+		int zenith_nbreaks_pol;
+		int zenith_offset_pol;
+		int zenith_stride_pol;
+		double* zenith_breaks_pol;
+		int total_coefs_single_config_pol; // May not be used
+		int total_coefs_all_configs_pol;
+
+		// Polarisation data
+		double* polarisation_dataset;
+	}
+	SkyModelState;
 
 	/// Load/reload all shaders if compilation is succesful.
 	/// @firstTimeLoadShaders: calls exit(0) if any of the reload/compilation failed.
@@ -67,6 +133,13 @@ private:
 	double double_from_half(const unsigned short value);
 	int compute_pp_coefs_from_half(const int nbreaks, const double* breaks, const unsigned short* values, double* coefs, const int offset, const double scale);
 	int compute_pp_coefs_from_float(const int nbreaks, const double* breaks, const float* values, double* coefs, const int offset);
+	// Read radiance metadata, calculate offsets and strides, read data
+	void read_radiance(SkyModelState* state, FILE* handle);
+	// Read transmittance metadata, read data
+	void read_transmittance(SkyModelState* state, FILE* handle);
+	// Read polarisation metadata, caclualte offsets and strides, read data
+	void read_polarisation(SkyModelState* state, FILE* handle);
+
 
 	// Test vertex buffer
 	struct VertexType
@@ -228,71 +301,6 @@ private:
 	};
 	typedef ConstantBuffer<SkyAtmosphereSideConstantBufferStructure> SkyAtmosphereSideConstantBuffer;
 	SkyAtmosphereSideConstantBuffer* SkyAtmosphereSideBuffer;
-
-	//Nathan: SkyModelState struct
-	typedef struct SkyModelState
-	{
-		// Radiance metadata
-		int turbidities;
-		double* turbidity_vals;
-		int albedos;
-		double* albedo_vals;
-		int altitudes;
-		double* altitude_vals;
-		int elevations;
-		double* elevation_vals;
-		int channels;
-		double channel_start;
-		double channel_width;
-		int tensor_components;
-		int sun_nbreaks;
-		int sun_offset;
-		int sun_stride;
-		double* sun_breaks;
-		int zenith_nbreaks;
-		int zenith_offset;
-		int zenith_stride;
-		double* zenith_breaks;
-		int emph_nbreaks;
-		int emph_offset;
-		double* emph_breaks;
-		int total_coefs_single_config; // May not be used
-		int total_coefs_all_configs;
-		int total_configs;
-
-		// Radiance data
-		double* radiance_dataset;
-
-		// Tranmittance metadata
-		int     trans_n_a;
-		int     trans_n_d;
-		int     trans_turbidities;
-		int     trans_altitudes;
-		int     trans_rank;
-		float* transmission_altitudes;
-		float* transmission_turbities;
-
-		// Tranmittance data
-		float* transmission_dataset_U;
-		float* transmission_dataset_V;
-
-		// Polarisation metadata
-		int tensor_components_pol;
-		int sun_nbreaks_pol;
-		int sun_offset_pol;
-		int sun_stride_pol;
-		double* sun_breaks_pol;
-		int zenith_nbreaks_pol;
-		int zenith_offset_pol;
-		int zenith_stride_pol;
-		double* zenith_breaks_pol;
-		int total_coefs_single_config_pol; // May not be used
-		int total_coefs_all_configs_pol;
-
-		// Polarisation data
-		double* polarisation_dataset;
-	}
-	SkyModelState;
 
 	SamplerState* SamplerLinear;
 	SamplerState* SamplerShadow;
