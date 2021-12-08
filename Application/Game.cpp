@@ -27,6 +27,66 @@ Game::~Game()
 {
 }
 
+// Nathan
+// Helper function for computations
+// Taken from ArPragueSkyModel.c
+double Game::double_from_half(const unsigned short value)
+{
+	unsigned long hi = (unsigned long)(value & 0x8000) << 16;
+	unsigned int abs = value & 0x7FFF;
+	if (abs)
+	{
+		hi |= 0x3F000000 << (unsigned)(abs >= 0x7C00);
+		for (; abs < 0x400; abs <<= 1, hi -= 0x100000);
+		hi += (unsigned long)(abs) << 10;
+	}
+	unsigned long dbits = (unsigned long)(hi) << 32;
+	double out;
+	memcpy(&out, &dbits, sizeof(double));
+	return out;
+}
+
+// Nathan
+// Helper function for computations
+// Taken from ArPragueSkyModel.c
+int Game::compute_pp_coefs_from_half(const int nbreaks, const double* breaks, const unsigned short* values, double* coefs, const int offset, const double scale)
+{
+	for (int i = 0; i < nbreaks - 1; ++i)
+	{
+		const double val1 = double_from_half(values[i + 1]) / scale;
+		const double val2 = double_from_half(values[i]) / scale;
+		const double diff = val1 - val2;
+
+		coefs[offset + 2 * i] = diff / (breaks[i + 1] - breaks[i]);
+		coefs[offset + 2 * i + 1] = val2;
+	}
+	return 2 * nbreaks - 2;
+}
+
+// Nathan
+// Helper function for computations
+// Taken from ArPragueSkyModel.c
+int Game::compute_pp_coefs_from_float(const int nbreaks, const double* breaks, const float* values, double* coefs, const int offset)
+{
+	for (int i = 0; i < nbreaks - 1; ++i)
+	{
+		coefs[offset + 2 * i] = ((double)values[i + 1] - (double)values[i]) / (breaks[i + 1] - breaks[i]);
+		coefs[offset + 2 * i + 1] = (double)values[i];
+	}
+	return 2 * nbreaks - 2;
+}
+
+
+// Nathan
+// Helper function used by various Sky Model functions
+// Taken from ArPragueSkyModel.c
+void Game::printErrorAndExit(const char* message)
+{
+	fprintf(stderr, message);	// Haven't had much luck with fprintf. Might need to switch to OutputDebugStringA() or some varient.
+	fprintf(stderr, "\n");
+	fflush(stderr);
+	exit(-1);
+}
 
 void Game::loadShaders(bool firstTimeLoadShaders)
 {
@@ -1004,13 +1064,13 @@ void Game::render()
 		if (uiRenderingMethod != MethodBruneton2017 && uiRenderingMethod != MethodSkyModel)	// I don't think I'll use these LUTs for sky model
 		{
 			renderTransmittanceLutPS();
-			OutputDebugStringA("TransmittancelutPS");
+			//OutputDebugStringA("TransmittancelutPS");
 		}
 
 		if(uiRenderingMethod == MethodRaymarching || (uiRenderingMethod == MethodPathTracing && currentMultipleScatteringFactor > 0.0f))
 		{
 			renderNewMultiScattTexPS();
-			OutputDebugStringA("new Multi Scatt Tex PS");
+			//OutputDebugStringA("new Multi Scatt Tex PS");
 		}
 
 		if (uiRenderingMethod == MethodPathTracing)
@@ -1028,7 +1088,7 @@ void Game::render()
 		//Nathan
 		else if (uiRenderingMethod == MethodSkyModel)
 		{
-			//OutputDebugStringA("Test String");	// Test output debug string, called every frame.
+			//OutputDebugStringA("Test String");	// Test output debug print string, called every frame.
 			/*if (currentFastSky)
 				renderSkyViewLut();
 			generateSkyAtmosphereCameraVolumeWithRayMarch();
