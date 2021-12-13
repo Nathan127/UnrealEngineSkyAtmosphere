@@ -16,6 +16,14 @@
 #define ALLOC_ARRAY(_struct,_number) \
             ((_struct *) malloc(sizeof(_struct) * (_number)))
 #define M_MAX(_a,_b)            ((_a) > (_b) ? (_a) : (_b)) // This one may cause issues later on. This macro exists twice in ART.
+#define ALLOC(_struct)              ((_struct *)malloc(sizeof(_struct)))
+#define FREE(_pointer) \
+do { \
+    void *_ptr=(void *)(_pointer); \
+    free(_ptr); \
+    _ptr=NULL; \
+    _pointer=NULL; \
+} while (0)
 
 struct CaptureEvent
 {
@@ -112,6 +120,7 @@ private:
 		double* polarisation_dataset;
 	}
 	SkyModelState;
+	SkyModelState* mySkyModelState;	//Made this a private variable to be passed around easier.
 
 	/// Load/reload all shaders if compilation is succesful.
 	/// @firstTimeLoadShaders: calls exit(0) if any of the reload/compilation failed.
@@ -139,7 +148,10 @@ private:
 	void read_transmittance(SkyModelState* state, FILE* handle);
 	// Read polarisation metadata, caclualte offsets and strides, read data
 	void read_polarisation(SkyModelState* state, FILE* handle);
-
+	// Allocate SkyModelState, load dataset, call read radiance, transmittance, polarisation to fill state struct.
+	SkyModelState* skymodelstate_alloc_init(const char* library_path);
+	// Free data allocated for SkyModelState
+	void skymodelstate_free(SkyModelState* state);
 
 	// Test vertex buffer
 	struct VertexType

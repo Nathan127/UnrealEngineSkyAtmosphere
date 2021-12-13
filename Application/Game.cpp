@@ -347,6 +347,70 @@ void Game::read_polarisation(SkyModelState* state, FILE* handle)
 	free(polarisation_temp);
 }
 
+
+// Nathan
+// Allocates and fills memory with the sky model dataset
+// Modified from ArPragueSkyModel.c
+Game::SkyModelState* Game::skymodelstate_alloc_init(const char* library_path)
+{
+	SkyModelState* state = ALLOC(SkyModelState);
+	char filename[1024];
+	sprintf_s(filename, "%s/Resources/SkyModelDataset.dat", library_path); // Changing to sprintf_s because it's more secure, apparently
+	FILE* handle;
+	errno_t fopen_s_error;
+	fopen_s_error = fopen_s(&handle, filename, "rb"); // Chaning to fopen_s because it's more secure, apparently
+
+	if(fopen_s_error == 0)
+	{
+		OutputDebugStringA("SkyModel Dataset file opened.\n");
+	}
+	else
+	{
+		OutputDebugStringA("Failed to open SkyModel Dataset.\n");
+		exit(-1);
+	}
+
+	// Read data
+	OutputDebugStringA("Reading Radiance...\n");
+	read_radiance(state, handle);
+	OutputDebugStringA("Reading Transmittance...\n");
+	read_transmittance(state, handle);
+	OutputDebugStringA("Reading Polarisation...\n");
+	read_polarisation(state, handle);
+	OutputDebugStringA("Done reading!\n");
+	fclose(handle);
+
+	return state;
+}
+
+// Nathan
+// Free allocated resources from SkyModelState
+// Modified from ArPragueSkyModel.c
+void Game::skymodelstate_free(SkyModelState* state)
+{
+	free(state->turbidity_vals);
+	free(state->albedo_vals);
+	free(state->altitude_vals);
+	free(state->elevation_vals);
+	free(state->sun_breaks);
+	free(state->zenith_breaks);
+	free(state->emph_breaks);
+	free(state->radiance_dataset);
+	free(state->transmission_dataset_U);
+	free(state->transmission_dataset_V);
+	free(state->transmission_altitudes);
+	free(state->transmission_turbities);
+
+	if (state->tensor_components_pol > 0)
+	{
+		free(state->sun_breaks_pol);
+		free(state->zenith_breaks_pol);
+		free(state->polarisation_dataset);
+	}
+
+	FREE(state);
+}
+
 void Game::loadShaders(bool firstTimeLoadShaders)
 {
 	auto GetStringNumber = [](int i)
@@ -562,6 +626,11 @@ void Game::releaseShaders()
 
 void Game::initialise()
 {
+	// Nathan
+	// Set SkyModelState and call Sky Model's memory allocation
+	mySkyModelState = skymodelstate_alloc_init("C:/Users/Nathan/Box/Masters/Atmos/UnrealEngineSkyAtmosphere/");
+
+
 	gpuDebugSystemCreate();
 	gpuDebugStateCreate(mDebugState);
 	gpuDebugStateCreate(mDummyDebugState);
@@ -849,6 +918,9 @@ void Game::releaseResolutionDependentResources()
 
 void Game::shutdown()
 {
+	// Nathan
+	skymodelstate_free(mySkyModelState);
+
 	gpuDebugSystemRelease();
 	gpuDebugStateDestroy(mDebugState);
 	gpuDebugStateDestroy(mDummyDebugState);
