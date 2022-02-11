@@ -27,6 +27,395 @@ Game::~Game()
 {
 }
 
+<<<<<<< Updated upstream
+=======
+// Nathan
+// Helper function for computations
+// Modified from ArPragueSkyModel.c
+double Game::double_from_half(const unsigned short value)
+{
+	unsigned long hi = (unsigned long)(value & 0x8000) << 16;
+	unsigned int abs = value & 0x7FFF;
+	if (abs)
+	{
+		hi |= 0x3F000000 << (unsigned)(abs >= 0x7C00);
+		for (; abs < 0x400; abs <<= 1, hi -= 0x100000);
+		hi += (unsigned long)(abs) << 10;
+	}
+	unsigned long dbits = (unsigned long)(hi) << 32;
+	double out;
+	memcpy(&out, &dbits, sizeof(double));
+	return out;
+}
+
+// Nathan
+// Helper function for computations
+// Modified from ArPragueSkyModel.c
+int Game::compute_pp_coefs_from_half(const int nbreaks, const double* breaks, const unsigned short* values, double* coefs, const int offset, const double scale)
+{
+	for (int i = 0; i < nbreaks - 1; ++i)
+	{
+		const double val1 = double_from_half(values[i + 1]) / scale;
+		const double val2 = double_from_half(values[i]) / scale;
+		const double diff = val1 - val2;
+
+		coefs[offset + 2 * i] = diff / (breaks[i + 1] - breaks[i]);
+		coefs[offset + 2 * i + 1] = val2;
+	}
+	return 2 * nbreaks - 2;
+}
+
+// Nathan
+// Helper function for computations
+// Modified from ArPragueSkyModel.c
+int Game::compute_pp_coefs_from_float(const int nbreaks, const double* breaks, const float* values, double* coefs, const int offset)
+{
+	for (int i = 0; i < nbreaks - 1; ++i)
+	{
+		coefs[offset + 2 * i] = ((double)values[i + 1] - (double)values[i]) / (breaks[i + 1] - breaks[i]);
+		coefs[offset + 2 * i + 1] = (double)values[i];
+	}
+	return 2 * nbreaks - 2;
+}
+
+
+// Nathan
+// Helper function used by various Sky Model functions
+// Modified from ArPragueSkyModel.c
+void Game::printErrorAndExit(const char* message)
+{
+	fprintf(stderr, message);	// Haven't had much luck with fprintf. Might need to switch to OutputDebugStringA() or some varient.
+	OutputDebugStringA("PrintErrorAndExit:");
+	OutputDebugStringA(message);
+	fprintf(stderr, "\n");
+	fflush(stderr);
+	exit(-1);
+}
+
+// Nathan
+// Read radiance metadata, calculate offsets and strides, read data
+// Modified from ArPragueSkyModel.c
+void Game::read_radiance(SkyModelState* state, FILE* handle)
+{
+	// Read metadata
+	// Structure of the metadata part of the data file:
+	// turbidities       (1 * int),  turbidity_vals (turbidities * double),
+	// albedos           (1 * int),  albedo_vals    (albedos * double),
+	// altitudes         (1 * int),  altitude_vals  (altitudes * double),
+	// elevations        (1 * int),  elevation_vals (elevations * double),
+	// channels          (1 * int),  channel_start  (1 * double), channel_width (1 * double),
+	// tensor_components (1 * int),
+		// sun_nbreaks       (1 * int),  sun_breaks     (sun_nbreaks * double),
+	// zenith_nbreaks    (1 * int),  zenith_breaks  (zenith_nbreaks * double),
+	// emph_nbreaks      (1 * int),  emph_breaks    (emph_nbreaks * double)
+
+	int valsRead;
+
+	valsRead = fread(&state->turbidities, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->turbidities < 1) printErrorAndExit("Error reading sky model data: turbidities");
+
+	state->turbidity_vals = ALLOC_ARRAY(double, state->turbidities);
+	valsRead = fread(state->turbidity_vals, sizeof(double), state->turbidities, handle);
+	if (valsRead != state->turbidities) printErrorAndExit("Error reading sky model data: turbidity_vals");
+
+	valsRead = fread(&state->albedos, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->albedos < 1) printErrorAndExit("Error reading sky model data: albedos");
+
+	state->albedo_vals = ALLOC_ARRAY(double, state->albedos);
+	valsRead = fread(state->albedo_vals, sizeof(double), state->albedos, handle);
+	if (valsRead != state->albedos) printErrorAndExit("Error reading sky model data: albedo_vals");
+
+	valsRead = fread(&state->altitudes, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->altitudes < 1) printErrorAndExit("Error reading sky model data: altitudes");
+
+	state->altitude_vals = ALLOC_ARRAY(double, state->altitudes);
+	valsRead = fread(state->altitude_vals, sizeof(double), state->altitudes, handle);
+	if (valsRead != state->altitudes) printErrorAndExit("Error reading sky model data: altitude_vals");
+
+	valsRead = fread(&state->elevations, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->elevations < 1) printErrorAndExit("Error reading sky model data: elevations");
+
+	state->elevation_vals = ALLOC_ARRAY(double, state->elevations);
+	valsRead = fread(state->elevation_vals, sizeof(double), state->elevations, handle);
+	if (valsRead != state->elevations) printErrorAndExit("Error reading sky model data: elevation_vals");
+
+	valsRead = fread(&state->channels, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->channels < 1) printErrorAndExit("Error reading sky model data: channels");
+
+	valsRead = fread(&state->channel_start, sizeof(double), 1, handle);
+	if (valsRead != 1 || state->channel_start < 0) printErrorAndExit("Error reading sky model data: channel_start");
+
+	valsRead = fread(&state->channel_width, sizeof(double), 1, handle);
+	if (valsRead != 1 || state->channel_width <= 0) printErrorAndExit("Error reading sky model data: channel_width");
+
+	valsRead = fread(&state->tensor_components, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->tensor_components < 1) printErrorAndExit("Error reading sky model data: tensor_components");
+
+	valsRead = fread(&state->sun_nbreaks, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->sun_nbreaks < 2) printErrorAndExit("Error reading sky model data: sun_nbreaks");
+
+	state->sun_breaks = ALLOC_ARRAY(double, state->sun_nbreaks);
+	valsRead = fread(state->sun_breaks, sizeof(double), state->sun_nbreaks, handle);
+	if (valsRead != state->sun_nbreaks) printErrorAndExit("Error reading sky model data: sun_breaks");
+
+	valsRead = fread(&state->zenith_nbreaks, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->zenith_nbreaks < 2) printErrorAndExit("Error reading sky model data: zenith_nbreaks");
+
+	state->zenith_breaks = ALLOC_ARRAY(double, state->zenith_nbreaks);
+	valsRead = fread(state->zenith_breaks, sizeof(double), state->zenith_nbreaks, handle);
+	if (valsRead != state->zenith_nbreaks) printErrorAndExit("Error reading sky model data: zenith_breaks");
+
+	valsRead = fread(&state->emph_nbreaks, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->emph_nbreaks < 2) printErrorAndExit("Error reading sky model data: emph_nbreaks");
+
+	state->emph_breaks = ALLOC_ARRAY(double, state->emph_nbreaks);
+	valsRead = fread(state->emph_breaks, sizeof(double), state->emph_nbreaks, handle);
+	if (valsRead != state->emph_nbreaks) printErrorAndExit("Error reading sky model data: emph_breaks");
+
+	// Calculate offsets and strides
+	state->sun_offset = 0;
+	state->sun_stride = 2 * state->sun_nbreaks - 2 + 2 * state->zenith_nbreaks - 2;
+	state->zenith_offset = state->sun_offset + 2 * state->sun_nbreaks - 2;
+	state->zenith_stride = state->sun_stride;
+	state->emph_offset = state->sun_offset + state->tensor_components * state->sun_stride;
+	state->total_coefs_single_config = state->emph_offset + 2 * state->emph_nbreaks - 2; // this is for one specific configuration
+	state->total_configs = state->channels * state->elevations * state->altitudes * state->albedos * state->turbidities;
+	state->total_coefs_all_configs = state->total_coefs_single_config * state->total_configs;
+
+	// Read data
+	// Structure of the data part of the data file:
+	// [[[[[[ sun_coefs (sun_nbreaks * half), zenith_scale (1 * double), zenith_coefs (zenith_nbreaks * half) ] * tensor_components, emph_coefs (emph_nbreaks * half) ]
+	//   * channels ] * elevations ] * altitudes ] * albedos ] * turbidities
+	int offset = 0;
+	state->radiance_dataset = ALLOC_ARRAY(double, state->total_coefs_all_configs);
+
+	if (1) {
+		unsigned short* radiance_temp = ALLOC_ARRAY(unsigned short, M_MAX(state->sun_nbreaks, M_MAX(state->zenith_nbreaks, state->emph_nbreaks)));
+
+		for (int con = 0; con < state->total_configs; ++con)
+		{
+			for (int tc = 0; tc < state->tensor_components; ++tc)
+			{
+				const double sun_scale = 1.0;
+				valsRead = fread(radiance_temp, sizeof(unsigned short), state->sun_nbreaks, handle);
+				if (valsRead != state->sun_nbreaks) printErrorAndExit("Error reading sky model data: sun_coefs");
+				offset += compute_pp_coefs_from_half(state->sun_nbreaks, state->sun_breaks, radiance_temp, state->radiance_dataset, offset, sun_scale);
+
+				double zenith_scale;
+				valsRead = fread(&zenith_scale, sizeof(double), 1, handle);
+				if (valsRead != 1) printErrorAndExit("Error reading sky model data: zenith_scale");
+
+				valsRead = fread(radiance_temp, sizeof(unsigned short), state->zenith_nbreaks, handle);
+				if (valsRead != state->zenith_nbreaks) printErrorAndExit("Error reading sky model data: zenith_coefs");
+				offset += compute_pp_coefs_from_half(state->zenith_nbreaks, state->zenith_breaks, radiance_temp, state->radiance_dataset, offset, zenith_scale);
+			}
+
+			const double emph_scale = 1.0;
+			valsRead = fread(radiance_temp, sizeof(unsigned short), state->emph_nbreaks, handle);
+			if (valsRead != state->emph_nbreaks) printErrorAndExit("Error reading sky model data: emph_coefs");
+			offset += compute_pp_coefs_from_half(state->emph_nbreaks, state->emph_breaks, radiance_temp, state->radiance_dataset, offset, emph_scale);
+		}
+
+		free(radiance_temp);
+	}
+	else {
+		float* radiance_temp = ALLOC_ARRAY(float, M_MAX(state->sun_nbreaks, M_MAX(state->zenith_nbreaks, state->emph_nbreaks)));
+
+		for (int con = 0; con < state->total_configs; ++con)
+		{
+			for (int tc = 0; tc < state->tensor_components; ++tc)
+			{
+				fread(radiance_temp, sizeof(float), state->sun_nbreaks, handle);
+				offset += compute_pp_coefs_from_float(state->sun_nbreaks, state->sun_breaks, radiance_temp, state->radiance_dataset, offset);
+
+				fread(radiance_temp, sizeof(float), state->zenith_nbreaks, handle);
+				offset += compute_pp_coefs_from_float(state->zenith_nbreaks, state->zenith_breaks, radiance_temp, state->radiance_dataset, offset);
+			}
+
+			fread(radiance_temp, sizeof(float), state->emph_nbreaks, handle);
+			offset += compute_pp_coefs_from_float(state->emph_nbreaks, state->emph_breaks, radiance_temp, state->radiance_dataset, offset);
+		}
+
+		free(radiance_temp);
+	}
+}
+
+// Nathan
+// Read transmittance metadata, read data
+// Modified from ArPragueSkyModel.c
+void Game::read_transmittance(SkyModelState* state, FILE* handle)
+{
+	// Read metadata
+	int valsRead;
+
+	valsRead = fread(&state->trans_n_d, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->trans_n_d < 1) printErrorAndExit("Error reading sky model data: trans_n_d");
+
+	valsRead = fread(&state->trans_n_a, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->trans_n_a < 1) printErrorAndExit("Error reading sky model data: trans_n_a");
+
+	valsRead = fread(&state->trans_turbidities, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->trans_turbidities < 1) printErrorAndExit("Error reading sky model data: trans_turbidities");
+
+	valsRead = fread(&state->trans_altitudes, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->trans_altitudes < 1) printErrorAndExit("Error reading sky model data: trans_altitudes");
+
+	valsRead = fread(&state->trans_rank, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->trans_rank < 1) printErrorAndExit("Error reading sky model data: trans_rank");
+
+	state->transmission_altitudes = ALLOC_ARRAY(float, state->trans_altitudes);
+	valsRead = fread(state->transmission_altitudes, sizeof(float), state->trans_altitudes, handle);
+	if (valsRead != state->trans_altitudes) printErrorAndExit("Error reading sky model data: transmission_altitudes");
+
+	state->transmission_turbities = ALLOC_ARRAY(float, state->trans_turbidities);
+	valsRead = fread(state->transmission_turbities, sizeof(float), state->trans_turbidities, handle);
+	if (valsRead != state->trans_turbidities) printErrorAndExit("Error reading sky model data: transmission_turbities");
+
+	const int total_coefs_U = state->trans_n_d * state->trans_n_a * state->trans_rank * state->trans_altitudes;
+	const int total_coefs_V = state->trans_turbidities * state->trans_rank * 11 * state->trans_altitudes;
+
+	// Read data
+	state->transmission_dataset_U = ALLOC_ARRAY(float, total_coefs_U);
+	valsRead = fread(state->transmission_dataset_U, sizeof(float), total_coefs_U, handle);
+	if (valsRead != total_coefs_U) printErrorAndExit("Error reading sky model data: transmission_dataset_U");
+
+	state->transmission_dataset_V = ALLOC_ARRAY(float, total_coefs_V);
+	valsRead = fread(state->transmission_dataset_V, sizeof(float), total_coefs_V, handle);
+	if (valsRead != total_coefs_V) printErrorAndExit("Error reading sky model data: transmission_dataset_V");
+}
+
+// Nathan
+// Read polarisation metadata, caclualte offsets and strides, read data
+// Modified from ArPragueSkyModel.c
+void Game::read_polarisation(SkyModelState* state, FILE* handle)
+{
+	// Read metadata
+	// Structure of the metadata part of the data file:
+	// tensor_components_pol (1 * int),
+	// sun_nbreaks_pol       (1 * int),  sun_breaks_pol     (sun_nbreaks_pol * double),
+	// zenith_nbreaks_pol    (1 * int),  zenith_breaks_pol  (zenith_nbreaks_pol * double),
+	// emph_nbreaks_pol      (1 * int),  emph_breaks_pol    (emph_nbreaks_pol * double)
+	int valsRead;
+	valsRead = fread(&state->tensor_components_pol, sizeof(int), 1, handle);
+	if (valsRead != 1)
+	{
+		// Polarisation dataset not present
+		state->tensor_components_pol = 0;
+		OutputDebugStringA("No polarisation dataset available!\n");
+		return;
+	}
+
+	valsRead = fread(&state->sun_nbreaks_pol, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->sun_nbreaks_pol < 1) printErrorAndExit("Error reading sky model data: sun_nbreaks_pol");
+
+	state->sun_breaks_pol = ALLOC_ARRAY(double, state->sun_nbreaks_pol);
+	valsRead = fread(state->sun_breaks_pol, sizeof(double), state->sun_nbreaks_pol, handle);
+	if (valsRead != state->sun_nbreaks_pol) printErrorAndExit("Error reading sky model data: sun_breaks_pol");
+
+	valsRead = fread(&state->zenith_nbreaks_pol, sizeof(int), 1, handle);
+	if (valsRead != 1 || state->zenith_nbreaks_pol < 1) printErrorAndExit("Error reading sky model data: zenith_nbreaks_pol");
+
+	state->zenith_breaks_pol = ALLOC_ARRAY(double, state->zenith_nbreaks_pol);
+	valsRead = fread(state->zenith_breaks_pol, sizeof(double), state->zenith_nbreaks_pol, handle);
+	if (valsRead != state->zenith_nbreaks_pol) printErrorAndExit("Error reading sky model data: zenith_breaks_pol");
+
+	// Calculate offsets and strides
+	state->sun_offset_pol = 0;
+	state->sun_stride_pol = 2 * state->sun_nbreaks_pol - 2 + 2 * state->zenith_nbreaks_pol - 2;
+	state->zenith_offset_pol = state->sun_offset_pol + 2 * state->sun_nbreaks_pol - 2;
+	state->zenith_stride_pol = state->sun_stride_pol;
+	state->total_coefs_single_config_pol = state->sun_offset_pol + state->tensor_components_pol * state->sun_stride_pol; // this is for one specific configuration
+	state->total_coefs_all_configs_pol = state->total_coefs_single_config_pol * state->total_configs;
+
+	// Read data
+	// Structure of the data part of the data file:
+	// [[[[[[ sun_coefs_pol (sun_nbreaks_pol * float), zenith_coefs_pol (zenith_nbreaks_pol * float) ] * tensor_components_pol]
+	//   * channels ] * elevations ] * altitudes ] * albedos ] * turbidities
+	int offset = 0;
+	state->polarisation_dataset = ALLOC_ARRAY(double, state->total_coefs_all_configs_pol);
+	float* polarisation_temp = ALLOC_ARRAY(float, M_MAX(state->sun_nbreaks_pol, state->zenith_nbreaks_pol));
+
+	for (int con = 0; con < state->total_configs; ++con)
+	{
+		for (int tc = 0; tc < state->tensor_components_pol; ++tc)
+		{
+			valsRead = fread(polarisation_temp, sizeof(float), state->sun_nbreaks_pol, handle);
+			if (valsRead != state->sun_nbreaks_pol) printErrorAndExit("Error reading sky model data: sun_coefs_pol");
+			offset += compute_pp_coefs_from_float(state->sun_nbreaks_pol, state->sun_breaks_pol, polarisation_temp, state->polarisation_dataset, offset);
+
+			valsRead = fread(polarisation_temp, sizeof(float), state->zenith_nbreaks_pol, handle);
+			if (valsRead != state->zenith_nbreaks_pol) printErrorAndExit("Error reading sky model data: zenith_coefs_pol");
+			offset += compute_pp_coefs_from_float(state->zenith_nbreaks_pol, state->zenith_breaks_pol, polarisation_temp, state->polarisation_dataset, offset);
+		}
+	}
+
+	free(polarisation_temp);
+}
+
+
+// Nathan
+// Allocates and fills memory with the sky model dataset
+// Modified from ArPragueSkyModel.c
+Game::SkyModelState* Game::skymodelstate_alloc_init(const char* library_path)
+{
+	SkyModelState* state = ALLOC(SkyModelState);
+	char filename[1024];
+	sprintf_s(filename, "%s/Resources/SkyModelDataset.dat", library_path); // Changing to sprintf_s because it's more secure, apparently
+	FILE* handle;
+	errno_t fopen_s_error;
+	fopen_s_error = fopen_s(&handle, filename, "rb"); // Chaning to fopen_s because it's more secure, apparently
+
+	if(fopen_s_error == 0)
+	{
+		OutputDebugStringA("SkyModel Dataset file opened.\n");
+	}
+	else
+	{
+		OutputDebugStringA("Failed to open SkyModel Dataset.\n");
+		exit(-1);
+	}
+
+	// Read data
+	OutputDebugStringA("Reading Radiance...\n");
+	read_radiance(state, handle);
+	OutputDebugStringA("Reading Transmittance...\n");
+	read_transmittance(state, handle);
+	OutputDebugStringA("Reading Polarisation...\n");
+	read_polarisation(state, handle);
+	OutputDebugStringA("Done reading!\n");
+	fclose(handle);
+
+	return state;
+}
+
+// Nathan
+// Free allocated resources from SkyModelState
+// Modified from ArPragueSkyModel.c
+void Game::skymodelstate_free(SkyModelState* state)
+{
+	free(state->turbidity_vals);
+	free(state->albedo_vals);
+	free(state->altitude_vals);
+	free(state->elevation_vals);
+	free(state->sun_breaks);
+	free(state->zenith_breaks);
+	free(state->emph_breaks);
+	free(state->radiance_dataset);
+	free(state->transmission_dataset_U);
+	free(state->transmission_dataset_V);
+	free(state->transmission_altitudes);
+	free(state->transmission_turbities);
+
+	if (state->tensor_components_pol > 0)
+	{
+		free(state->sun_breaks_pol);
+		free(state->zenith_breaks_pol);
+		free(state->polarisation_dataset);
+	}
+
+	FREE(state);
+}
+>>>>>>> Stashed changes
 
 void Game::loadShaders(bool firstTimeLoadShaders)
 {
@@ -243,6 +632,15 @@ void Game::releaseShaders()
 
 void Game::initialise()
 {
+<<<<<<< Updated upstream
+=======
+	// Nathan
+	// Set SkyModelState and call Sky Model's memory allocation
+	// TODO: Comment this back in when we need SkyModel's data
+	//mySkyModelState = skymodelstate_alloc_init("C:/Users/Nathan/Box/Masters/Atmos/UnrealEngineSkyAtmosphere/");
+
+
+>>>>>>> Stashed changes
 	gpuDebugSystemCreate();
 	gpuDebugStateCreate(mDebugState);
 	gpuDebugStateCreate(mDummyDebugState);
@@ -530,6 +928,13 @@ void Game::releaseResolutionDependentResources()
 
 void Game::shutdown()
 {
+<<<<<<< Updated upstream
+=======
+	// Nathan
+	// TODO: Comment this back when when we load SkyModel
+	//skymodelstate_free(mySkyModelState);
+
+>>>>>>> Stashed changes
 	gpuDebugSystemRelease();
 	gpuDebugStateDestroy(mDebugState);
 	gpuDebugStateDestroy(mDummyDebugState);
@@ -1017,6 +1422,19 @@ void Game::render()
 			generateSkyAtmosphereCameraVolumeWithRayMarch();
 			renderRayMarching();
 		}
+<<<<<<< Updated upstream
+=======
+		//Nathan
+		else if (uiRenderingMethod == MethodSkyModel)
+		{
+			if (currentFastSky)
+				renderSkyViewLut();
+			generateSkyAtmosphereCameraVolumeWithRayMarch();
+
+			// TODO: Comment this back for sky model
+			renderSkyModel();
+		}
+>>>>>>> Stashed changes
 		else
 		{
 			if (AtmosphereHasChanged)
