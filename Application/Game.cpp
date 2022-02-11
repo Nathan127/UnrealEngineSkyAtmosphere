@@ -82,6 +82,8 @@ int Game::compute_pp_coefs_from_float(const int nbreaks, const double* breaks, c
 void Game::printErrorAndExit(const char* message)
 {
 	fprintf(stderr, message);	// Haven't had much luck with fprintf. Might need to switch to OutputDebugStringA() or some varient.
+	OutputDebugStringA("PrintErrorAndExit:");
+	OutputDebugStringA(message);
 	fprintf(stderr, "\n");
 	fflush(stderr);
 	exit(-1);
@@ -630,6 +632,10 @@ void Game::initialise()
 	// Set SkyModelState and call Sky Model's memory allocation
 	mySkyModelState = skymodelstate_alloc_init("C:/Users/Nathan/Box/Masters/Atmos/UnrealEngineSkyAtmosphere/");
 
+	// Nathan
+	// Set SkyModelState and call Sky Model's memory allocation
+	// TODO: Comment this back in when we need SkyModel's data
+	//mySkyModelState = skymodelstate_alloc_init("C:/Users/Nathan/Box/Masters/Atmos/UnrealEngineSkyAtmosphere/");
 
 	gpuDebugSystemCreate();
 	gpuDebugStateCreate(mDebugState);
@@ -918,9 +924,12 @@ void Game::releaseResolutionDependentResources()
 
 void Game::shutdown()
 {
+
 	// Nathan
 	skymodelstate_free(mySkyModelState);
-
+	// Nathan
+	// TODO: Comment this back when when we load SkyModel
+	//skymodelstate_free(mySkyModelState);
 	gpuDebugSystemRelease();
 	gpuDebugStateDestroy(mDebugState);
 	gpuDebugStateDestroy(mDummyDebugState);
@@ -1424,6 +1433,16 @@ void Game::render()
 				renderSkyViewLut();
 			generateSkyAtmosphereCameraVolumeWithRayMarch();
 			renderRayMarching();*/
+			renderSkyModel();
+		}
+		//Nathan
+		else if (uiRenderingMethod == MethodSkyModel)
+		{
+			if (currentFastSky)
+				renderSkyViewLut();
+			generateSkyAtmosphereCameraVolumeWithRayMarch();
+
+			// TODO: Comment this back for sky model
 			renderSkyModel();
 		}
 		else

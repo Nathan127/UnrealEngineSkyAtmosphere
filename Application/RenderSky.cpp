@@ -265,9 +265,6 @@ void Game::renderRayMarching()
 	}
 }
 
-
-
-
 void Game::renderSkyModel()
 {
 	// Render with Sky Model 2021
@@ -280,10 +277,83 @@ void Game::renderSkyModel()
 	// Update contexts
 
 	// Draw
+// Render with Sky Model 2021
+// This function is called every frame, the model will have to already be loaded and ready elsewhere.
+// *** Based on Ray Marching Implementation ***
+void Game::renderSkyModel()
+{
+	// Set up dx11 Device context / buffers
+	const D3dViewport& backBufferViewport = g_dx11Device->getBackBufferViewport();
+	D3dRenderContext* context = g_dx11Device->getDeviceContext();
+	D3dRenderTargetView* backBuffer = g_dx11Device->getBackBufferRT();
+
+	mConstantBufferCPU.gResolution[0] = uint32(mBackBufferHdr->mDesc.Width);
+	mConstantBufferCPU.gResolution[1] = uint32(mBackBufferHdr->mDesc.Height);
+	mConstantBuffer->update(mConstantBufferCPU);
+
+	D3dViewport LutViewPort = { 0.0f, 0.0f, float(mConstantBufferCPU.gResolution[0]), float(mConstantBufferCPU.gResolution[1]), 0.0f, 1.0f };
+
+	// Set up and call shaders
+
+	//////////
+	////////// Render using path tracing
+	//////////
+	context->RSSetViewports(1, &LutViewPort);
+	{
+		GPU_SCOPED_TIMEREVENT(RenderRayMarching, 255, 255, 200);
+
+		int fastAerialPersp = currentAerialPerspective ? 1 : 0;
+		int ColoredTransmittance = currentColoredTransmittance && !fastAerialPersp ? 1 : 0;
+
+		GpuDebugState& gds = mUpdateDebugState ? mDebugState : mDummyDebugState;
+		D3dUnorderedAccessView* const uavs[2] = { gds.gpuDebugLineBufferUAV, gds.gpuDebugLineDispatchIndUAV };
+		UINT const uavInitCounts[2] = { -1, -1 };
+		context->OMSetRenderTargetsAndUnorderedAccessViews(1, &mBackBufferHdr->mRenderTargetView, nullptr, 2, 2, uavs, uavInitCounts);
+		context->OMSetDepthStencilState(mDisabledDepthStencilState->mState, 0);
+
+		if (ColoredTransmittance)
+		{
+			context->OMSetBlendState(BlendLuminanceTransmittance->mState, nullptr, 0xffffffff);
+		}
+		else
+		{
+			context->OMSetBlendState(BlendPreMutlAlpha->mState, nullptr, 0xffffffff);
+		}
+
+		// Set null input assembly and layout
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(nullptr);
+
+		// Final view
+		mScreenVertexShader->setShader(*context);
+		RenderRayMarchingPS[currentMultipleScatteringFactor > 0.0f ? 1 : 0][currentFastSky ? 1 : 0]
+			[ColoredTransmittance][fastAerialPersp][currentShadowPermutation ? 1 : 0]->setShader(*context);
+
+		// Update contexts using shaders
+		context->VSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
+		context->PSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
+		context->PSSetConstantBuffers(1, 1, &SkyAtmosphereBuffer->mBuffer);
+
+		context->PSSetSamplers(0, 1, &SamplerLinear->mSampler);
+		context->PSSetSamplers(1, 1, &SamplerShadow->mSampler);
+
+		context->PSSetShaderResources(1, 1, &mBlueNoise2dTex->mShaderResourceView);
+		context->PSSetShaderResources(2, 1, &mTransmittanceTex->mShaderResourceView);
+		context->PSSetShaderResources(3, 1, &mSkyViewLutTex->mShaderResourceView);
+
+		context->PSSetShaderResources(4, 1, &mBackBufferDepth->mShaderResourceView);
+		context->PSSetShaderResources(5, 1, &mShadowMap->mShaderResourceView);
+
+		context->PSSetShaderResources(6, 1, &MultiScattTex->mShaderResourceView);
+		context->PSSetShaderResources(7, 1, &AtmosphereCameraScatteringVolume->mShaderResourceView);
+
+		// Draw call
+		context->Draw(3, 0);
+		g_dx11Device->setNullPsResources(context);
+		g_dx11Device->setNullRenderTarget(context);
+		context->OMSetBlendState(mDefaultBlendState->mState, nullptr, 0xffffffff);
+	}
 }
-
-
-
 
 void Game::RenderSkyAtmosphereOverOpaque()
 {
