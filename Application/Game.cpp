@@ -12,7 +12,6 @@
 #define TINYEXR_IMPLEMENTATION
 #include <tinyexr/tinyexr.h>
 
-
 Game::Game()
 {
 	memset(&AtmosphereInfosSaved, 0, sizeof(AtmosphereInfos));
@@ -27,8 +26,6 @@ Game::~Game()
 {
 }
 
-<<<<<<< Updated upstream
-=======
 // Nathan
 // Helper function for computations
 // Modified from ArPragueSkyModel.c
@@ -415,7 +412,6 @@ void Game::skymodelstate_free(SkyModelState* state)
 
 	FREE(state);
 }
->>>>>>> Stashed changes
 
 void Game::loadShaders(bool firstTimeLoadShaders)
 {
@@ -632,15 +628,15 @@ void Game::releaseShaders()
 
 void Game::initialise()
 {
-<<<<<<< Updated upstream
-=======
+	// Nathan
+	// Set SkyModelState and call Sky Model's memory allocation
+	mySkyModelState = skymodelstate_alloc_init("C:/Users/Nathan/Box/Masters/Atmos/UnrealEngineSkyAtmosphere/");
+
 	// Nathan
 	// Set SkyModelState and call Sky Model's memory allocation
 	// TODO: Comment this back in when we need SkyModel's data
 	//mySkyModelState = skymodelstate_alloc_init("C:/Users/Nathan/Box/Masters/Atmos/UnrealEngineSkyAtmosphere/");
 
-
->>>>>>> Stashed changes
 	gpuDebugSystemCreate();
 	gpuDebugStateCreate(mDebugState);
 	gpuDebugStateCreate(mDummyDebugState);
@@ -928,13 +924,12 @@ void Game::releaseResolutionDependentResources()
 
 void Game::shutdown()
 {
-<<<<<<< Updated upstream
-=======
+
+	// Nathan
+	skymodelstate_free(mySkyModelState);
 	// Nathan
 	// TODO: Comment this back when when we load SkyModel
 	//skymodelstate_free(mySkyModelState);
-
->>>>>>> Stashed changes
 	gpuDebugSystemRelease();
 	gpuDebugStateDestroy(mDebugState);
 	gpuDebugStateDestroy(mDummyDebugState);
@@ -1259,8 +1254,8 @@ void Game::render()
 		ImGui::Begin("Render method/Tech");
 
 		uiRenderingMethodPrev = uiRenderingMethod;
-		const char* listbox_renderingMethods[] = { "Bruneton 2017", "Path Tracing", "NEW Ray Marching"};
-		ImGui::Combo("Render method", &uiRenderingMethod, listbox_renderingMethods, MethodCount, 3);
+		const char* listbox_renderingMethods[] = { "Bruneton 2017", "Path Tracing", "NEW Ray Marching", "Sky Model 2021"};
+		ImGui::Combo("Render method", &uiRenderingMethod, listbox_renderingMethods, MethodCount, 4);
 
 		transPermutationPrev = currentTransPermutation;
 		shadowPermutationPrev = currentShadowPermutation;
@@ -1285,6 +1280,12 @@ void Game::render()
 			ImGui::Checkbox("FastAerialPersepctive",  &currentAerialPerspective);
 			if(!currentAerialPerspective)
 				ImGui::Checkbox("RGB Transmittance",  &currentColoredTransmittance);
+		}
+
+		// Nathan
+		if (uiRenderingMethod == MethodSkyModel)
+		{
+			// Atmosphere Specific GUI options
 		}
 
 		multipleScatteringFactorPrev = currentMultipleScatteringFactor;
@@ -1400,14 +1401,16 @@ void Game::render()
 
 	{
 		GPU_SCOPED_TIMEREVENT(SkyRender, 255, 255, 255);
-		if (uiRenderingMethod != MethodBruneton2017)
+		if (uiRenderingMethod != MethodBruneton2017 && uiRenderingMethod != MethodSkyModel)	// I don't think I'll use these LUTs for sky model
 		{
 			renderTransmittanceLutPS();
+			//OutputDebugStringA("TransmittancelutPS");
 		}
 
 		if(uiRenderingMethod == MethodRaymarching || (uiRenderingMethod == MethodPathTracing && currentMultipleScatteringFactor > 0.0f))
 		{
 			renderNewMultiScattTexPS();
+			//OutputDebugStringA("new Multi Scatt Tex PS");
 		}
 
 		if (uiRenderingMethod == MethodPathTracing)
@@ -1422,8 +1425,16 @@ void Game::render()
 			generateSkyAtmosphereCameraVolumeWithRayMarch();
 			renderRayMarching();
 		}
-<<<<<<< Updated upstream
-=======
+		//Nathan
+		else if (uiRenderingMethod == MethodSkyModel)
+		{
+			//OutputDebugStringA("Test String");	// Test output debug print string, called every frame.
+			/*if (currentFastSky)
+				renderSkyViewLut();
+			generateSkyAtmosphereCameraVolumeWithRayMarch();
+			renderRayMarching();*/
+			renderSkyModel();
+		}
 		//Nathan
 		else if (uiRenderingMethod == MethodSkyModel)
 		{
@@ -1434,7 +1445,6 @@ void Game::render()
 			// TODO: Comment this back for sky model
 			renderSkyModel();
 		}
->>>>>>> Stashed changes
 		else
 		{
 			if (AtmosphereHasChanged)

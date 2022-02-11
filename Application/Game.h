@@ -11,6 +11,20 @@
 #include "GpuDebugRenderer.h"
 #include <functional>
 
+// Nathan
+// MACROS used by various sky model functions
+#define ALLOC_ARRAY(_struct,_number) \
+            ((_struct *) malloc(sizeof(_struct) * (_number)))
+#define M_MAX(_a,_b)            ((_a) > (_b) ? (_a) : (_b)) // This one may cause issues later on. This macro exists twice in ART.
+#define ALLOC(_struct)              ((_struct *)malloc(sizeof(_struct)))
+#define FREE(_pointer) \
+do { \
+    void *_ptr=(void *)(_pointer); \
+    free(_ptr); \
+    _ptr=NULL; \
+    _pointer=NULL; \
+} while (0)
+
 struct CaptureEvent
 {
 	bool setupdone = false;
@@ -42,6 +56,71 @@ public:
 	void render();
 
 private:
+	//Nathan: SkyModelState struct
+	typedef struct SkyModelState
+	{
+		// Radiance metadata
+		int turbidities;
+		double* turbidity_vals;
+		int albedos;
+		double* albedo_vals;
+		int altitudes;
+		double* altitude_vals;
+		int elevations;
+		double* elevation_vals;
+		int channels;
+		double channel_start;
+		double channel_width;
+		int tensor_components;
+		int sun_nbreaks;
+		int sun_offset;
+		int sun_stride;
+		double* sun_breaks;
+		int zenith_nbreaks;
+		int zenith_offset;
+		int zenith_stride;
+		double* zenith_breaks;
+		int emph_nbreaks;
+		int emph_offset;
+		double* emph_breaks;
+		int total_coefs_single_config; // May not be used
+		int total_coefs_all_configs;
+		int total_configs;
+
+		// Radiance data
+		double* radiance_dataset;
+
+		// Tranmittance metadata
+		int     trans_n_a;
+		int     trans_n_d;
+		int     trans_turbidities;
+		int     trans_altitudes;
+		int     trans_rank;
+		float* transmission_altitudes;
+		float* transmission_turbities;
+
+		// Tranmittance data
+		float* transmission_dataset_U;
+		float* transmission_dataset_V;
+
+		// Polarisation metadata
+		int tensor_components_pol;
+		int sun_nbreaks_pol;
+		int sun_offset_pol;
+		int sun_stride_pol;
+		double* sun_breaks_pol;
+		int zenith_nbreaks_pol;
+		int zenith_offset_pol;
+		int zenith_stride_pol;
+		double* zenith_breaks_pol;
+		int total_coefs_single_config_pol; // May not be used
+		int total_coefs_all_configs_pol;
+
+		// Polarisation data
+		double* polarisation_dataset;
+	}
+	SkyModelState;
+	SkyModelState* mySkyModelState;	//Made this a private variable to be passed around easier.
 
 	/// Load/reload all shaders if compilation is succesful.
 	/// @firstTimeLoadShaders: calls exit(0) if any of the reload/compilation failed.
@@ -55,6 +134,24 @@ private:
 	void releaseResolutionDependentResources();
 
 	void saveBackBufferHdr(const char* filepath);
+
+	// Nathan
+	// Helper function used by various Sky Model functions
+	void printErrorAndExit(const char* message);
+	// Helper function for sky model computation
+	double double_from_half(const unsigned short value);
+	int compute_pp_coefs_from_half(const int nbreaks, const double* breaks, const unsigned short* values, double* coefs, const int offset, const double scale);
+	int compute_pp_coefs_from_float(const int nbreaks, const double* breaks, const float* values, double* coefs, const int offset);
+	// Read radiance metadata, calculate offsets and strides, read data
+	void read_radiance(SkyModelState* state, FILE* handle);
+	// Read transmittance metadata, read data
+	void read_transmittance(SkyModelState* state, FILE* handle);
+	// Read polarisation metadata, caclualte offsets and strides, read data
+	void read_polarisation(SkyModelState* state, FILE* handle);
+	// Allocate SkyModelState, load dataset, call read radiance, transmittance, polarisation to fill state struct.
+	SkyModelState* skymodelstate_alloc_init(const char* library_path);
+	// Free data allocated for SkyModelState
+	void skymodelstate_free(SkyModelState* state);
 
 	// Test vertex buffer
 	struct VertexType
@@ -330,6 +427,7 @@ private:
 		MethodBruneton2017 = 0,
 		MethodPathTracing,
 		MethodRaymarching,
+		MethodSkyModel,
 		MethodCount
 	};
 	int  uiRenderingMethod = MethodRaymarching;
@@ -351,6 +449,7 @@ private:
 	void renderPathTracing();
 	void RenderSkyAtmosphereOverOpaque();
 	void renderRayMarching();
+	void renderSkyModel();
 	void generateSkyAtmosphereCameraVolumeWithRayMarch();
 	void renderTerrain();
 	void renderShadowmap();
