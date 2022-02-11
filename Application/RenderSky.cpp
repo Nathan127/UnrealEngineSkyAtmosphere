@@ -265,18 +265,6 @@ void Game::renderRayMarching()
 	}
 }
 
-void Game::renderSkyModel()
-{
-	// Render with Sky Model 2021
-	// This function is called every frame, the model will have to already be loaded and ready elsewhere.
-
-	// Set up dx11 Device context / buffers
-
-	// Call sky model shader
-
-	// Update contexts
-
-	// Draw
 // Render with Sky Model 2021
 // This function is called every frame, the model will have to already be loaded and ready elsewhere.
 // *** Based on Ray Marching Implementation ***

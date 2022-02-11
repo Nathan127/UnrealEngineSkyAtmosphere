@@ -630,10 +630,6 @@ void Game::initialise()
 {
 	// Nathan
 	// Set SkyModelState and call Sky Model's memory allocation
-	mySkyModelState = skymodelstate_alloc_init("C:/Users/Nathan/Box/Masters/Atmos/UnrealEngineSkyAtmosphere/");
-
-	// Nathan
-	// Set SkyModelState and call Sky Model's memory allocation
 	// TODO: Comment this back in when we need SkyModel's data
 	//mySkyModelState = skymodelstate_alloc_init("C:/Users/Nathan/Box/Masters/Atmos/UnrealEngineSkyAtmosphere/");
 
@@ -924,9 +920,6 @@ void Game::releaseResolutionDependentResources()
 
 void Game::shutdown()
 {
-
-	// Nathan
-	skymodelstate_free(mySkyModelState);
 	// Nathan
 	// TODO: Comment this back when when we load SkyModel
 	//skymodelstate_free(mySkyModelState);
