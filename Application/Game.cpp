@@ -1247,7 +1247,7 @@ void Game::render()
 		ImGui::Begin("Render method/Tech");
 
 		uiRenderingMethodPrev = uiRenderingMethod;
-		const char* listbox_renderingMethods[] = { "Bruneton 2017", "Path Tracing", "NEW Ray Marching", "Sky Model 2021"};
+		const char* listbox_renderingMethods[] = { "Bruneton 2017", "Path Tracing", "Ray Marching", "Sky Model 2021"};
 		ImGui::Combo("Render method", &uiRenderingMethod, listbox_renderingMethods, MethodCount, 4);
 
 		transPermutationPrev = currentTransPermutation;
@@ -1397,19 +1397,20 @@ void Game::render()
 		if (uiRenderingMethod != MethodBruneton2017 && uiRenderingMethod != MethodSkyModel)	// I don't think I'll use these LUTs for sky model
 		{
 			renderTransmittanceLutPS();
-			//OutputDebugStringA("TransmittancelutPS");
+			OutputDebugStringA("TransmittancelutPS()");
 		}
 
 		if(uiRenderingMethod == MethodRaymarching || (uiRenderingMethod == MethodPathTracing && currentMultipleScatteringFactor > 0.0f))
 		{
 			renderNewMultiScattTexPS();
-			//OutputDebugStringA("new Multi Scatt Tex PS");
+			OutputDebugStringA("new Multi Scatt Tex PS()");
 		}
 
 		if (uiRenderingMethod == MethodPathTracing)
 		{
 			renderPathTracing();
 			RenderSkyAtmosphereOverOpaque();
+			OutputDebugStringA("render path tracing() and Sky Atmos over Opague()");
 		}
 		else if (uiRenderingMethod == MethodRaymarching)
 		{
@@ -1417,26 +1418,13 @@ void Game::render()
 				renderSkyViewLut();
 			generateSkyAtmosphereCameraVolumeWithRayMarch();
 			renderRayMarching();
+			OutputDebugStringA("render Ray March()");
 		}
 		//Nathan
 		else if (uiRenderingMethod == MethodSkyModel)
 		{
-			//OutputDebugStringA("Test String");	// Test output debug print string, called every frame.
-			/*if (currentFastSky)
-				renderSkyViewLut();
-			generateSkyAtmosphereCameraVolumeWithRayMarch();
-			renderRayMarching();*/
 			renderSkyModel();
-		}
-		//Nathan
-		else if (uiRenderingMethod == MethodSkyModel)
-		{
-			if (currentFastSky)
-				renderSkyViewLut();
-			generateSkyAtmosphereCameraVolumeWithRayMarch();
-
-			// TODO: Comment this back for sky model
-			renderSkyModel();
+			OutputDebugStringA("render Sky Model()");
 		}
 		else
 		{
@@ -1447,6 +1435,7 @@ void Game::render()
 			}
 			generateSkyAtmosphereCameraVolumes();
 			renderSkyAtmosphereUsingLUTs();
+			OutputDebugStringA("render Sky Atmosphere Using LUTs()");
 		}
 	}
 
