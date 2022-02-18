@@ -307,25 +307,28 @@ void Game::renderSkyModel()
 		RenderRayMarchingPS[currentMultipleScatteringFactor > 0.0f ? 1 : 0][currentFastSky ? 1 : 0][0][0][currentShadowPermutation ? 1 : 0]->setShader(*context);
 
 		// Update contexts using shaders
+
+		// Don't touch these three
 		context->VSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
 		context->PSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
 		context->PSSetConstantBuffers(1, 1, &SkyAtmosphereBuffer->mBuffer);
 
 		context->PSSetSamplers(0, 1, &SamplerLinear->mSampler);
-		context->PSSetSamplers(1, 1, &SamplerShadow->mSampler);
+		context->PSSetSamplers(1, 1, &SamplerShadow->mSampler);	//Not in Bruneton
 
-		context->PSSetShaderResources(1, 1, &mBlueNoise2dTex->mShaderResourceView);
-		context->PSSetShaderResources(2, 1, &mTransmittanceTex->mShaderResourceView);
-		context->PSSetShaderResources(3, 1, &mSkyViewLutTex->mShaderResourceView);	//Different from PT
+		context->PSSetShaderResources(1, 1, &mBlueNoise2dTex->mShaderResourceView); //Different from Bruneton
+		context->PSSetShaderResources(2, 1, &mTransmittanceTex->mShaderResourceView); //Different from Bruneton
+		context->PSSetShaderResources(3, 1, &mSkyViewLutTex->mShaderResourceView);	//Different from PT and Bruneton
 
+		// Don't touch
 		context->PSSetShaderResources(4, 1, &mBackBufferDepth->mShaderResourceView);
-		context->PSSetShaderResources(5, 1, &mShadowMap->mShaderResourceView);
+		context->PSSetShaderResources(5, 1, &mShadowMap->mShaderResourceView); //Not in Bruneton
 
-		context->PSSetShaderResources(6, 1, &MultiScattTex->mShaderResourceView);
-		context->PSSetShaderResources(7, 1, &AtmosphereCameraScatteringVolume->mShaderResourceView); //Different from PT
+		context->PSSetShaderResources(6, 1, &MultiScattTex->mShaderResourceView); //Not in Bruneton
+		context->PSSetShaderResources(7, 1, &AtmosphereCameraScatteringVolume->mShaderResourceView); //Different from PT, Not in Bruneton
 
 		// Draw call
-		// Likely won't need to make any changes here.
+		// Don't touch these
 		context->Draw(3, 0);
 		g_dx11Device->setNullPsResources(context);
 		g_dx11Device->setNullRenderTarget(context);

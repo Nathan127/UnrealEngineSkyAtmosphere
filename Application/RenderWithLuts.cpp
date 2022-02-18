@@ -307,6 +307,7 @@ void Game::generateSkyAtmosphereCameraVolumes()
 	g_dx11Device->setNullRenderTarget(context);
 }
 
+// Bruneton 2017 rendering function
 void Game::renderSkyAtmosphereUsingLUTs()
 {
 	const D3dViewport& backBufferViewport = g_dx11Device->getBackBufferViewport();
