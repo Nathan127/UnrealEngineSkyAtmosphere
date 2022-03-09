@@ -1423,6 +1423,9 @@ void Game::render()
 		//Nathan
 		else if (uiRenderingMethod == MethodSkyModel)
 		{
+			renderTransmittanceLutPSSkyModel();
+			renderNewMultiScattTexPSSkyModel();
+			generateSkyAtmosphereCameraVolumeWithRayMarchSkyModel();
 			renderSkyModel();
 			OutputDebugStringA("render Sky Model()");
 		}

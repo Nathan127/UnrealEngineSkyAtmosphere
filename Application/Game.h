@@ -449,7 +449,13 @@ private:
 	void renderPathTracing();
 	void RenderSkyAtmosphereOverOpaque();
 	void renderRayMarching();
+
+	//Nathan
 	void renderSkyModel();
+	void renderTransmittanceLutPSSkyModel();
+	void renderNewMultiScattTexPSSkyModel();
+	void generateSkyAtmosphereCameraVolumeWithRayMarchSkyModel();
+
 	void generateSkyAtmosphereCameraVolumeWithRayMarch();
 	void renderTerrain();
 	void renderShadowmap();

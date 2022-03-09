@@ -11,6 +11,7 @@
 
 void Game::renderTransmittanceLutPS()
 {
+	OutputDebugStringA("renderTransmittanceLutPS()");
 	D3dRenderContext* context = g_dx11Device->getDeviceContext();
 	GPU_SCOPED_TIMEREVENT(TransLUT, 230, 230, 76);
 
@@ -37,10 +38,39 @@ void Game::renderTransmittanceLutPS()
 	g_dx11Device->setNullRenderTarget(context);
 }
 
+//Nathan
+void Game::renderTransmittanceLutPSSkyModel()
+{
+	OutputDebugStringA("renderTransmittanceLutPSSkyModel()");
+	D3dRenderContext* context = g_dx11Device->getDeviceContext();
+	GPU_SCOPED_TIMEREVENT(TransLUT, 230, 230, 76);
 
+	D3dViewport LutViewPort = { 0.0f, 0.0f, float(LutsInfo.TRANSMITTANCE_TEXTURE_WIDTH), float(LutsInfo.TRANSMITTANCE_TEXTURE_HEIGHT), 0.0f, 1.0f };
+	context->RSSetViewports(1, &LutViewPort);
+
+	const uint32* initialCount = 0;
+	context->OMSetRenderTargetsAndUnorderedAccessViews(1, &mTransmittanceTex->mRenderTargetView, nullptr, 0, 0, nullptr, initialCount);
+
+	// Set null input assembly and layout
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->IASetInputLayout(nullptr);
+
+	// Final view
+	mScreenVertexShader->setShader(*context);
+	RenderTransmittanceLutPS->setShader(*context);
+
+	context->VSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
+	context->PSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
+	context->PSSetConstantBuffers(1, 1, &SkyAtmosphereBuffer->mBuffer);
+
+	context->Draw(3, 0);
+	g_dx11Device->setNullPsResources(context);
+	g_dx11Device->setNullRenderTarget(context);
+}
 
 void Game::renderNewMultiScattTexPS()
 {
+	OutputDebugStringA("renderNewMultiScattTexPS()");
 	D3dRenderContext* context = g_dx11Device->getDeviceContext();
 	GPU_SCOPED_TIMEREVENT(NewMultiScatCS, 230, 230, 76);
 
@@ -82,9 +112,54 @@ void Game::renderNewMultiScattTexPS()
 	g_dx11Device->setNullCsUnorderedAccessViews(context);
 }
 
+// Nathan
+void Game::renderNewMultiScattTexPSSkyModel()
+{
+	OutputDebugStringA("renderNewMultiScattTexPSSkyModel()");
+	D3dRenderContext* context = g_dx11Device->getDeviceContext();
+	GPU_SCOPED_TIMEREVENT(NewMultiScatCS, 230, 230, 76);
+
+	auto SetCommon = [&]()
+	{
+		context->CSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
+		context->CSSetConstantBuffers(1, 1, &SkyAtmosphereBuffer->mBuffer);
+
+		context->CSSetSamplers(0, 1, &SamplerLinear->mSampler);
+		context->CSSetSamplers(1, 1, &SamplerShadow->mSampler);
+
+		context->CSSetShaderResources(1, 1, &mBlueNoise2dTex->mShaderResourceView);
+		context->CSSetShaderResources(2, 1, &mTransmittanceTex->mShaderResourceView);
+
+		context->CSSetShaderResources(4, 1, &mBackBufferDepth->mShaderResourceView);	// Clear out depth
+		context->CSSetShaderResources(5, 1, &mShadowMap->mShaderResourceView);			// Clear out shadow map
+	};
+
+	auto DispatchCS = [&](UINT w, UINT h)
+	{
+		uint32 DispatchSizeX = w;// divRoundUp(w, 8);
+		uint32 DispatchSizeY = h;// divRoundUp(h, 8);
+		uint32 DispatchSizeZ = 1;
+		context->Dispatch(DispatchSizeX, DispatchSizeY, DispatchSizeZ);
+	};
+
+	g_dx11Device->setNullVsResources(context);
+	g_dx11Device->setNullPsResources(context);
+	g_dx11Device->setNullRenderTarget(context);
+	g_dx11Device->setNullCsResources(context);
+	g_dx11Device->setNullCsUnorderedAccessViews(context);
+
+	NewMuliScattLutCS->setShader(*context);
+	SetCommon();
+	context->CSSetUnorderedAccessViews(0, 1, &MultiScattTex->mUnorderedAccessView, nullptr);
+	DispatchCS(MultiScattStep0Tex->mDesc.Width, MultiScattStep0Tex->mDesc.Height);
+
+	g_dx11Device->setNullCsResources(context);
+	g_dx11Device->setNullCsUnorderedAccessViews(context);
+}
 
 void Game::renderSkyViewLut()
 {
+	OutputDebugStringA("renderSkyViewLut()");
 	D3dRenderContext* context = g_dx11Device->getDeviceContext();
 	GPU_SCOPED_TIMEREVENT(SkyViewLut, 230, 230, 76);
 
@@ -126,6 +201,7 @@ void Game::renderSkyViewLut()
 
 void Game::renderPathTracing()
 {
+	OutputDebugStringA("renderPathTracing()");
 	const bool enableGroundGI = AtmosphereInfos.ground_albedo.x != 0 || AtmosphereInfos.ground_albedo.y != 0 || AtmosphereInfos.ground_albedo.z != 0;
 	int GroundGiPermutation = enableGroundGI ? GroundGlobalIlluminationEnabled : GroundGlobalIlluminationDisabled;
 	const bool GameMode = false;
@@ -196,6 +272,7 @@ void Game::renderPathTracing()
 
 void Game::renderRayMarching()
 {
+	OutputDebugStringA("renderRayMarching()");
 	const D3dViewport& backBufferViewport = g_dx11Device->getBackBufferViewport();
 	D3dRenderContext* context = g_dx11Device->getDeviceContext();
 	D3dRenderTargetView* backBuffer = g_dx11Device->getBackBufferRT();
@@ -270,6 +347,7 @@ void Game::renderRayMarching()
 // *** Based on Ray Marching Implementation ***
 void Game::renderSkyModel()
 {
+	OutputDebugStringA("renderSkyModel()");
 	// Set up dx11 Device context / buffers
 	// Don't think I'll need to change much here.
 	//const D3dViewport& backBufferViewport = g_dx11Device->getBackBufferViewport();
@@ -304,7 +382,7 @@ void Game::renderSkyModel()
 
 		// Final view
 		mScreenVertexShader->setShader(*context);
-		RenderRayMarchingPS[currentMultipleScatteringFactor > 0.0f ? 1 : 0][currentFastSky ? 1 : 0][0][0][currentShadowPermutation ? 1 : 0]->setShader(*context);
+		RenderRayMarchingPS[currentMultipleScatteringFactor > 0.0f ? 1 : 0][currentFastSky ? 1 : 0][0][0][currentShadowPermutation ? 1 : 0]->setShader(*context); // Not in Bruneton
 
 		// Update contexts using shaders
 
@@ -338,6 +416,7 @@ void Game::renderSkyModel()
 
 void Game::RenderSkyAtmosphereOverOpaque()
 {
+	OutputDebugStringA("RenderSkyAtmosphereOverOpaque()");
 	const D3dViewport& backBufferViewport = g_dx11Device->getBackBufferViewport();
 	D3dRenderContext* context = g_dx11Device->getDeviceContext();
 	D3dRenderTargetView* backBuffer = g_dx11Device->getBackBufferRT();
@@ -389,6 +468,7 @@ void Game::RenderSkyAtmosphereOverOpaque()
 
 void Game::generateSkyAtmosphereCameraVolumeWithRayMarch()
 {
+	OutputDebugStringA("generateSkyAtmosphereCameraVolumeWithRayMarch()");
 	mConstantBufferCPU.gResolution[0] = AtmosphereCameraScatteringVolume->mDesc.Width;
 	mConstantBufferCPU.gResolution[1] = AtmosphereCameraScatteringVolume->mDesc.Height;
 	mConstantBuffer->update(mConstantBufferCPU);
@@ -434,3 +514,51 @@ void Game::generateSkyAtmosphereCameraVolumeWithRayMarch()
 	g_dx11Device->setNullRenderTarget(context);
 }
 
+// Nathan
+void Game::generateSkyAtmosphereCameraVolumeWithRayMarchSkyModel()
+{
+	OutputDebugStringA("generateSkyAtmosphereCameraVolumeWithRayMarchSkyModel()");
+	mConstantBufferCPU.gResolution[0] = AtmosphereCameraScatteringVolume->mDesc.Width;
+	mConstantBufferCPU.gResolution[1] = AtmosphereCameraScatteringVolume->mDesc.Height;
+	mConstantBuffer->update(mConstantBufferCPU);
+
+	D3dRenderContext* context = g_dx11Device->getDeviceContext();
+	GPU_SCOPED_TIMEREVENT(CameraVolumes, 177, 34, 76);
+
+	const uint32* initialCount = 0;
+	D3dRenderTargetView* RtViews[1] = { AtmosphereCameraScatteringVolume->mRenderTargetView };
+	context->OMSetRenderTargetsAndUnorderedAccessViews(1, RtViews, nullptr, 0, 0, nullptr, initialCount);
+
+	D3dViewport CameraVolumeViewPort = { 0,0,32,32,0.0f,1.0f };
+	context->RSSetViewports(1, &CameraVolumeViewPort);
+
+	// Set null input assembly and layout
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->IASetInputLayout(nullptr);
+
+	// Final view
+	mScreenVertexShader->setShader(*context);
+	GeometryGS->setShader(*context);
+	CameraVolumesRayMarchPS[currentMultipleScatteringFactor > 0.0f ? 1 : 0]->setShader(*context);
+
+	context->VSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
+	context->PSSetConstantBuffers(0, 1, &mConstantBuffer->mBuffer);
+	context->PSSetConstantBuffers(1, 1, &SkyAtmosphereBuffer->mBuffer);
+
+	context->PSSetSamplers(0, 1, &SamplerLinear->mSampler);
+	context->PSSetSamplers(1, 1, &SamplerShadow->mSampler);
+
+	context->PSSetShaderResources(1, 1, &mBlueNoise2dTex->mShaderResourceView);
+	context->PSSetShaderResources(2, 1, &mTransmittanceTex->mShaderResourceView);
+	context->PSSetShaderResources(3, 1, &mSkyViewLutTex->mShaderResourceView);
+
+	context->PSSetShaderResources(4, 1, &mBackBufferDepth->mShaderResourceView);
+	context->PSSetShaderResources(5, 1, &mShadowMap->mShaderResourceView);
+
+	context->PSSetShaderResources(6, 1, &MultiScattTex->mShaderResourceView);
+
+	context->DrawInstanced(3, AtmosphereCameraScatteringVolume->mDesc.Depth, 0, 0);
+	context->GSSetShader(nullptr, nullptr, 0);
+	g_dx11Device->setNullPsResources(context);
+	g_dx11Device->setNullRenderTarget(context);
+}
