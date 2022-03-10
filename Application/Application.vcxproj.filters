@@ -153,6 +153,9 @@
     <FxCompile Include="..\Resources\RenderSkyPathTracing.hlsl">
       <Filter>HLSL</Filter>
     </FxCompile>
+    <FxCompile Include="..\Resources\RenderSkyRayMarchingSkyModel.hlsl">
+      <Filter>HLSL</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Resources\Bruneton17\definitions.glsl">
