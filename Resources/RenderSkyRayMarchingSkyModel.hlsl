@@ -9,18 +9,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-
+// Used in several of these functions as the return value or converting a parameter of this to a returned float
 struct SingleScatteringResult
 {
 	float3 L;						// Scattered light (luminance)
 	float3 OpticalDepth;			// Optical depth (1/m)
 	float3 Transmittance;			// Transmittance in [0,1] (unitless)
 	float3 MultiScatAs1;
-
 	float3 NewMultiScatStep0Out;
 	float3 NewMultiScatStep1Out;
 };
 
+// IN: Pixel position, world position/direction, sun direction, atmosphere parameters, ground, sample count, depth buffer value, variable sample count, mie ray phase, tmax
+// OUT: Single Scattering Result Struct
+// Calculates intensity of light
+// Calls several functions in RenderSkyCommon
 SingleScatteringResult IntegrateScatteredLuminance(
 	in float2 pixPos, in float3 WorldPos, in float3 WorldDir, in float3 SunDir, in AtmosphereParameters Atmosphere,
 	in bool ground, in float SampleCountIni, in float DepthBufferValue, in bool VariableSampleCount,
@@ -185,6 +188,7 @@ SingleScatteringResult IntegrateScatteredLuminance(
 
 		float3 multiScatteredLuminance = 0.0f;
 #if MULTISCATAPPROX_ENABLED
+		// Defined in RenderSkyCommon
 		multiScatteredLuminance = GetMultipleScattering(Atmosphere, medium.scattering, medium.extinction, P, SunZenithCosAngle);
 #endif
 
@@ -269,16 +273,18 @@ SingleScatteringResult IntegrateScatteredLuminance(
 
 #define AP_SLICE_COUNT 32.0f
 #define AP_KM_PER_SLICE 4.0f
-
+// Helper for RenderRayMarchingPS()
 float AerialPerspectiveDepthToSlice(float depth)
 {
 	return depth * (1.0f / AP_KM_PER_SLICE);
 }
+// Helper for RenderCameraVolumePS()
 float AerialPerspectiveSliceToDepth(float slice)
 {
 	return slice * AP_KM_PER_SLICE;
 }
 
+// Acts as return type for RenderRayMarchingPS
 struct RayMarchPixelOutputStruct
 {
 	float4 Luminance		: SV_TARGET0;
@@ -287,6 +293,7 @@ struct RayMarchPixelOutputStruct
 #endif
 };
 
+// Calls several functions in RenderSkyCommon
 RayMarchPixelOutputStruct RenderRayMarchingPS(VertexOutput Input)
 {
 	RayMarchPixelOutputStruct output = (RayMarchPixelOutputStruct)0;
@@ -304,14 +311,6 @@ RayMarchPixelOutputStruct RenderRayMarchingPS(VertexOutput Input)
 	float3 WorldPos = camera + float3(0, 0, Atmosphere.BottomRadius);
 
 	float DepthBufferValue = -1.0;
-
-
-	//if (pixPos.x < 512 && pixPos.y < 512)
-	//{
-	//	output.Luminance = float4(MultiScatTexture.SampleLevel(samplerLinearClamp, pixPos / float2(512, 512), 0).rgb, 1.0);
-	//	return output;
-	//}
-
 
 	float viewHeight = length(WorldPos);
 	float3 L = 0;
@@ -415,6 +414,9 @@ RayMarchPixelOutputStruct RenderRayMarchingPS(VertexOutput Input)
 groupshared float3 MultiScatAs1SharedMem[64];
 groupshared float3 LSharedMem[64];
 
+// Multi threaded
+// Calls several functions from RenderSkyCommon
+// No Return type
 [numthreads(1, 1, 64)]
 void NewMultiScattCS(uint3 ThreadId : SV_DispatchThreadID)
 {
